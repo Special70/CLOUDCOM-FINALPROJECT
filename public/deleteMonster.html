@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HAU Monsters - Delete Monster</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f4f0; min-height: 100vh; }
+
+        .header {
+            background: linear-gradient(#317940 0%, #103315 100%);
+            color: white; height: 60px; display: flex; align-items: center;
+            padding: 0 20px; position: fixed; top: 0; left: 0; right: 0;
+            z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        .burger { background: none; border: none; cursor: pointer; display: flex; flex-direction: column; gap: 5px; padding: 4px; margin-right: 16px; }
+        .burger span { display: block; width: 24px; height: 2px; background-color: white; border-radius: 2px; }
+        .header-title { font-size: 20px; font-weight: 700; letter-spacing: 0.5px; }
+        .header-user { margin-left: auto; font-size: 14px; display: flex; align-items: center; gap: 12px; }
+        .logout-btn { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+        .logout-btn:hover { background: rgba(255,255,255,0.25); }
+
+        .layout { display: flex; margin-top: 60px; min-height: calc(100vh - 60px); }
+
+        .sidebar { width: 260px; background: white; border-right: 1px solid #dde8dd; padding: 30px 20px; flex-shrink: 0; transition: width 0.3s ease, padding 0.3s ease; }
+        .sidebar.collapsed { width: 0; padding: 30px 0; overflow: hidden; }
+        .sidebar h2 { font-size: 17px; font-weight: 700; color: #1a4d1a; margin-bottom: 6px; }
+        .sidebar p { font-size: 12px; color: #666; line-height: 1.5; margin-bottom: 28px; }
+        .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; text-decoration: none; color: #333; font-size: 14px; font-weight: 500; margin-bottom: 4px; transition: background 0.2s, color 0.2s; }
+        .sidebar-nav a:hover { background: #e8f5e9; color: #2e7d32; }
+        .sidebar-nav a.active { background: #e8f5e9; color: #2e7d32; font-weight: 600; }
+        .sidebar-nav a .nav-icon { font-size: 18px; width: 24px; text-align: center; }
+
+        .main { flex: 1; padding: 36px 40px; }
+        .main-header { margin-bottom: 28px; }
+        .main-header h1 { font-size: 26px; font-weight: 700; color: #1a4d1a; margin-bottom: 6px; }
+        .main-header p { font-size: 14px; color: #666; }
+
+        .monster-list { display: flex; flex-direction: column; gap: 12px; }
+
+        .monster-row {
+            background: white; border-radius: 10px; padding: 16px 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-left: 4px solid #4CAF50;
+            display: flex; align-items: center; gap: 16px;
+        }
+        .monster-icon { font-size: 28px; flex-shrink: 0; }
+        .monster-info { flex: 1; }
+        .monster-info .name { font-size: 15px; font-weight: 700; color: #1a4d1a; }
+        .monster-info .type { font-size: 13px; color: #888; margin-top: 2px; }
+        .delete-btn {
+            background: none; border: none; cursor: pointer;
+            font-size: 20px; padding: 6px; border-radius: 6px;
+            transition: background 0.2s; flex-shrink: 0;
+        }
+        .delete-btn:hover { background: #ffebee; }
+
+        .empty { text-align: center; color: #aaa; font-size: 14px; padding: 60px 0; }
+
+        /* Modal */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.4); z-index: 200;
+            align-items: center; justify-content: center;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: white; border-radius: 12px; padding: 32px 28px;
+            width: 340px; box-shadow: 0 8px 32px rgba(0,0,0,0.2); text-align: center;
+        }
+        .modal h3 { font-size: 18px; color: #1a4d1a; margin-bottom: 10px; }
+        .modal p { font-size: 14px; color: #555; margin-bottom: 24px; }
+        .modal-actions { display: flex; gap: 12px; justify-content: center; }
+        .btn-cancel { padding: 9px 24px; border: 1px solid #ccc; background: white; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .btn-cancel:hover { background: #f5f5f5; }
+        .btn-delete { padding: 9px 24px; background: #e53935; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; }
+        .btn-delete:hover { background: #c62828; }
+
+        @media (max-width: 600px) {
+            .sidebar { display: none; }
+            .main { padding: 24px 16px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <button class="burger" id="burgerBtn"><span></span><span></span><span></span></button>
+        <span class="header-title">HAU Monsters</span>
+        <div class="header-user">
+            <span id="welcomeText">Welcome, Trainer</span>
+            <button class="logout-btn" id="logoutBtn">Logout</button>
+        </div>
+    </header>
+
+    <div class="layout">
+        <aside class="sidebar" id="sidebar">
+            <h2>Monster Control Center</h2>
+            <p>Manage monster records, catch monsters, and view monster areas.</p>
+            <nav class="sidebar-nav">
+                <a href="/dashboard.html"><span class="nav-icon">🏠</span> Dashboard</a>
+                <a href="/addMonster.html"><span class="nav-icon">➕</span> Add Monster</a>
+                <a href="#"><span class="nav-icon">🎯</span> Catch Monster</a>
+                <a href="#"><span class="nav-icon">✏️</span> Edit Monster</a>
+                <a href="/deleteMonster.html" class="active"><span class="nav-icon">🗑️</span> Delete Monster</a>
+                <a href="#"><span class="nav-icon">🏆</span> Top Hunters</a>
+                <a href="/map.html"><span class="nav-icon">🗺️</span> Monster Map</a>
+            </nav>
+        </aside>
+
+        <main class="main">
+            <div class="main-header">
+                <h1>🗑️ Delete Monster</h1>
+                <p>Select a monster to permanently remove it from the system.</p>
+            </div>
+            <div class="monster-list" id="monsterList">
+                <div class="empty">Loading monsters...</div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <h3>Delete Monster</h3>
+            <p id="modalText">Are you sure you want to delete this monster?</p>
+            <div class="modal-actions">
+                <button class="btn-cancel" id="cancelBtn">Cancel</button>
+                <button class="btn-delete" id="confirmBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const user = JSON.parse(sessionStorage.getItem('user'));
+        if (!user) window.location.href = '/signup.html';
+        else document.getElementById('welcomeText').textContent = `Welcome, ${user.player_name}`;
+
+        document.getElementById('burgerBtn').addEventListener('click', () => {
+            document.getElementById('sidebar').classList.toggle('collapsed');
+        });
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            sessionStorage.removeItem('user');
+            window.location.href = '/signup.html';
+        });
+
+        let pendingId = null;
+        let pendingName = null;
+
+        async function loadMonsters() {
+            const list = document.getElementById('monsterList');
+            try {
+                const res = await fetch('/api/monsters');
+                const monsters = await res.json();
+                if (!monsters.length) {
+                    list.innerHTML = '<div class="empty">No monsters found.</div>';
+                    return;
+                }
+                list.innerHTML = monsters.map(m => `
+                    <div class="monster-row" id="row-${m.monster_id}">
+                        <div class="monster-icon">🐉</div>
+                        <div class="monster-info">
+                            <div class="name">${m.monster_name}</div>
+                            <div class="type">${m.monster_type}</div>
+                        </div>
+                        <button class="delete-btn" title="Delete" onclick="confirmDelete(${m.monster_id}, '${m.monster_name.replace(/'/g, "\\'")}')">🗑️</button>
+                    </div>
+                `).join('');
+            } catch {
+                list.innerHTML = '<div class="empty">Failed to load monsters.</div>';
+            }
+        }
+
+        function confirmDelete(id, name) {
+            pendingId = id;
+            pendingName = name;
+            document.getElementById('modalText').textContent = `Are you sure you want to delete "${name}"? This cannot be undone.`;
+            document.getElementById('modalOverlay').classList.add('show');
+        }
+
+        document.getElementById('cancelBtn').addEventListener('click', () => {
+            document.getElementById('modalOverlay').classList.remove('show');
+            pendingId = null;
+        });
+
+        document.getElementById('confirmBtn').addEventListener('click', async () => {
+            if (!pendingId) return;
+            document.getElementById('modalOverlay').classList.remove('show');
+            try {
+                const res = await fetch(`/api/monsters/${pendingId}`, { method: 'DELETE' });
+                if (res.ok) {
+                    document.getElementById(`row-${pendingId}`).remove();
+                    if (!document.querySelector('.monster-row')) {
+                        document.getElementById('monsterList').innerHTML = '<div class="empty">No monsters found.</div>';
+                    }
+                }
+            } catch (err) {
+                alert('Failed to delete monster.');
+            }
+            pendingId = null;
+        });
+
+        loadMonsters();
+    </script>
+</body>
+</html>

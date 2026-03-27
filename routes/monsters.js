@@ -37,12 +37,14 @@ router.put('/:id', async (req, res) => {
 });
 
 router.delete('/:id', async (req, res) => {
-  await pool.query(
-    'DELETE FROM monsterstbl WHERE monster_id=?',
-    [req.params.id]
-  );
-
-  res.json({ message: 'deleted' });
+  try {
+    await pool.query('DELETE FROM monster_catchestbl WHERE monster_id=?', [req.params.id]);
+    await pool.query('DELETE FROM monsterstbl WHERE monster_id=?', [req.params.id]);
+    res.json({ message: 'deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message });
+  }
 });
 
 module.exports = router;

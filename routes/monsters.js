@@ -24,16 +24,19 @@ router.post('/', async (req, res) => {
 });
 
 router.put('/:id', async (req, res) => {
-  const m = req.body;
-
-  await pool.query(
-    `UPDATE monsterstbl SET
-    monster_name=?, monster_type=?, spawn_latitude=?, spawn_longitude=?, spawn_radius_meters=?, picture_url=?
-    WHERE monster_id=?`,
-    [m.monster_name, m.monster_type, m.spawn_latitude, m.spawn_longitude, m.spawn_radius_meters, m.picture_url, req.params.id]
-  );
-
-  res.json({ message: 'updated' });
+  try {
+    const m = req.body;
+    await pool.query(
+      `UPDATE monsterstbl SET
+      monster_name=?, monster_type=?, spawn_latitude=?, spawn_longitude=?, spawn_radius_meters=?
+      WHERE monster_id=?`,
+      [m.monster_name, m.monster_type, m.spawn_latitude, m.spawn_longitude, m.spawn_radius_meters, req.params.id]
+    );
+    res.json({ message: 'updated' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message });
+  }
 });
 
 router.delete('/:id', async (req, res) => {

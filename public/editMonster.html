@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HAU Monsters - Edit Monster</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f4f0; min-height: 100vh; }
+
+        .header {
+            background: linear-gradient(#317940 0%, #103315 100%);
+            color: white; height: 60px; display: flex; align-items: center;
+            padding: 0 20px; position: fixed; top: 0; left: 0; right: 0;
+            z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+        .burger { background: none; border: none; cursor: pointer; display: flex; flex-direction: column; gap: 5px; padding: 4px; margin-right: 16px; }
+        .burger span { display: block; width: 24px; height: 2px; background-color: white; border-radius: 2px; }
+        .header-title { font-size: 20px; font-weight: 700; letter-spacing: 0.5px; }
+        .header-user { margin-left: auto; font-size: 14px; display: flex; align-items: center; gap: 12px; }
+        .logout-btn { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+        .logout-btn:hover { background: rgba(255,255,255,0.25); }
+
+        .layout { display: flex; margin-top: 60px; min-height: calc(100vh - 60px); }
+
+        .sidebar { width: 260px; background: white; border-right: 1px solid #dde8dd; padding: 30px 20px; flex-shrink: 0; transition: width 0.3s ease, padding 0.3s ease; }
+        .sidebar.collapsed { width: 0; padding: 30px 0; overflow: hidden; }
+        .sidebar h2 { font-size: 17px; font-weight: 700; color: #1a4d1a; margin-bottom: 6px; }
+        .sidebar p { font-size: 12px; color: #666; line-height: 1.5; margin-bottom: 28px; }
+        .sidebar-nav a { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; text-decoration: none; color: #333; font-size: 14px; font-weight: 500; margin-bottom: 4px; transition: background 0.2s, color 0.2s; }
+        .sidebar-nav a:hover { background: #e8f5e9; color: #2e7d32; }
+        .sidebar-nav a.active { background: #e8f5e9; color: #2e7d32; font-weight: 600; }
+        .sidebar-nav a .nav-icon { font-size: 18px; width: 24px; text-align: center; }
+
+        .main { flex: 1; padding: 36px 40px; display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: start; min-width: 0; }
+
+        .main-header { grid-column: 1 / -1; margin-bottom: 4px; }
+        .main-header h1 { font-size: 26px; font-weight: 700; color: #1a4d1a; margin-bottom: 6px; }
+        .main-header p { font-size: 14px; color: #666; }
+
+        /* Monster List Panel */
+        .monster-list-panel { background: white; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); border-top: 4px solid #4CAF50; overflow: hidden; }
+        .panel-title { padding: 16px 20px; font-size: 14px; font-weight: 700; color: #1a4d1a; border-bottom: 1px solid #eee; }
+        .monster-list { display: flex; flex-direction: column; max-height: calc(100vh - 220px); overflow-y: auto; }
+        .monster-row {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 16px; border-bottom: 1px solid #f0f0f0;
+            transition: background 0.15s; cursor: default;
+        }
+        .monster-row:last-child { border-bottom: none; }
+        .monster-row.selected { background: #e8f5e9; }
+        .monster-row:hover { background: #f5faf5; }
+        .monster-row.selected:hover { background: #e8f5e9; }
+        .monster-info { flex: 1; min-width: 0; }
+        .monster-info .name { font-size: 14px; font-weight: 600; color: #1a4d1a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .monster-info .type { font-size: 12px; color: #888; margin-top: 2px; }
+        .edit-btn { background: none; border: none; cursor: pointer; font-size: 17px; padding: 5px; border-radius: 6px; transition: background 0.2s; flex-shrink: 0; }
+        .edit-btn:hover { background: #e8f5e9; }
+        .empty { text-align: center; color: #aaa; font-size: 14px; padding: 40px 16px; }
+
+        /* Form Panel */
+        .form-panel { background: white; border-radius: 12px; padding: 28px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); border-top: 4px solid #4CAF50; }
+        .form-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; color: #bbb; font-size: 14px; gap: 10px; }
+        .form-placeholder span { font-size: 40px; }
+
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 6px; color: #555; font-weight: 500; font-size: 14px; }
+        input[type="text"], input[type="number"] {
+            width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px;
+            font-size: 14px; transition: border-color 0.2s; font-family: inherit;
+        }
+        input:focus { outline: none; border-color: #4CAF50; box-shadow: 0 0 0 3px rgba(76,175,80,0.15); }
+
+        .map-picker { width: 100%; height: 280px; border-radius: 8px; border: 1px solid #ddd; overflow: hidden; cursor: crosshair; }
+        .coords-display { margin-top: 8px; font-size: 13px; color: #555; background: #f0f4f0; padding: 8px 12px; border-radius: 6px; }
+        .coords-display span { font-weight: 600; color: #1a4d1a; }
+
+        .submit-btn { padding: 10px 24px; background-color: #4CAF50; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background-color 0.2s; }
+        .submit-btn:hover { background-color: #45a049; }
+        .submit-btn:disabled { background-color: #a5d6a7; cursor: not-allowed; }
+
+        .message { margin-top: 16px; font-size: 14px; font-weight: 500; padding: 10px 14px; border-radius: 6px; display: none; }
+        .message.success { background: #e8f5e9; color: #2e7d32; display: block; }
+        .message.error { background: #ffebee; color: #c62828; display: block; }
+
+        @media (max-width: 900px) {
+            .main { grid-template-columns: 1fr; }
+            .main-header { grid-column: 1; }
+            .monster-list { max-height: 260px; }
+        }
+        @media (max-width: 600px) {
+            .sidebar { display: none; }
+            .main { padding: 24px 16px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header">
+        <button class="burger" id="burgerBtn"><span></span><span></span><span></span></button>
+        <span class="header-title">HAU Monsters</span>
+        <div class="header-user">
+            <span id="welcomeText">Welcome, Trainer</span>
+            <button class="logout-btn" id="logoutBtn">Logout</button>
+        </div>
+    </header>
+
+    <div class="layout">
+        <aside class="sidebar" id="sidebar">
+            <h2>Monster Control Center</h2>
+            <p>Manage monster records, catch monsters, and view monster areas.</p>
+            <nav class="sidebar-nav">
+                <a href="/dashboard.html"><span class="nav-icon">🏠</span> Dashboard</a>
+                <a href="/addMonster.html"><span class="nav-icon">➕</span> Add Monster</a>
+                <a href="#"><span class="nav-icon">🎯</span> Catch Monster</a>
+                <a href="/editMonster.html" class="active"><span class="nav-icon">✏️</span> Edit Monster</a>
+                <a href="/deleteMonster.html"><span class="nav-icon">🗑️</span> Delete Monster</a>
+                <a href="#"><span class="nav-icon">🏆</span> Top Hunters</a>
+                <a href="/map.html"><span class="nav-icon">🗺️</span> Monster Map</a>
+            </nav>
+        </aside>
+
+        <main class="main">
+            <div class="main-header">
+                <h1>✏️ Edit Monster</h1>
+                <p>Select a monster from the list to edit its details.</p>
+            </div>
+
+            <!-- Monster List -->
+            <div class="monster-list-panel">
+                <div class="panel-title">All Monsters</div>
+                <div class="monster-list" id="monsterList">
+                    <div class="empty">Loading...</div>
+                </div>
+            </div>
+
+            <!-- Edit Form -->
+            <div class="form-panel" id="formPanel">
+                <div class="form-placeholder" id="formPlaceholder">
+                    <span>✏️</span>
+                    Select a monster to edit
+                </div>
+
+                <form id="editForm" style="display:none;">
+                    <div class="form-group">
+                        <label for="monster_name">Monster Name</label>
+                        <input type="text" id="monster_name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="monster_type">Monster Type</label>
+                        <input type="text" id="monster_type" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Spawn Location <span style="font-weight:400;color:#888">(click map to change)</span></label>
+                        <div class="map-picker" id="spawnMap"></div>
+                        <div class="coords-display" id="coordsDisplay">Loading location...</div>
+                        <input type="hidden" id="spawn_latitude">
+                        <input type="hidden" id="spawn_longitude">
+                    </div>
+                    <div class="form-group">
+                        <label for="spawn_radius_meters">Spawn Radius (meters)</label>
+                        <input type="number" id="spawn_radius_meters" min="1" required>
+                    </div>
+                    <button type="submit" class="submit-btn" id="submitBtn">Save Changes</button>
+                </form>
+                <div class="message" id="message"></div>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const user = JSON.parse(sessionStorage.getItem('user'));
+        if (!user) window.location.href = '/signup.html';
+        else document.getElementById('welcomeText').textContent = `Welcome, ${user.player_name}`;
+
+        document.getElementById('burgerBtn').addEventListener('click', () => document.getElementById('sidebar').classList.toggle('collapsed'));
+        document.getElementById('logoutBtn').addEventListener('click', () => { sessionStorage.removeItem('user'); window.location.href = '/signup.html'; });
+
+        // Map init
+        const spawnMap = L.map('spawnMap').setView([15.1452, 120.5919], 15);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { attribution: '&copy; CARTO' }).addTo(spawnMap);
+        let spawnMarker = null;
+
+        spawnMap.on('click', function(e) {
+            const { lat, lng } = e.latlng;
+            document.getElementById('spawn_latitude').value = lat;
+            document.getElementById('spawn_longitude').value = lng;
+            document.getElementById('coordsDisplay').innerHTML = `📍 Lat: <span>${lat.toFixed(6)}</span> &nbsp; Lng: <span>${lng.toFixed(6)}</span>`;
+            if (spawnMarker) spawnMarker.setLatLng(e.latlng);
+            else spawnMarker = L.marker(e.latlng).addTo(spawnMap);
+        });
+
+        let currentId = null;
+
+        async function loadMonsters() {
+            const list = document.getElementById('monsterList');
+            try {
+                const res = await fetch('/api/monsters');
+                const monsters = await res.json();
+                if (!monsters.length) { list.innerHTML = '<div class="empty">No monsters found.</div>'; return; }
+                list.innerHTML = monsters.map(m => `
+                    <div class="monster-row" id="row-${m.monster_id}">
+                        <div class="monster-info">
+                            <div class="name">${m.monster_name}</div>
+                            <div class="type">${m.monster_type}</div>
+                        </div>
+                        <button class="edit-btn" title="Edit" onclick="loadEdit(${m.monster_id}, '${m.monster_name.replace(/'/g,"\\'")}', '${m.monster_type.replace(/'/g,"\\'")}', ${m.spawn_latitude}, ${m.spawn_longitude}, ${m.spawn_radius_meters})">✏️</button>
+                    </div>
+                `).join('');
+            } catch {
+                list.innerHTML = '<div class="empty">Failed to load monsters.</div>';
+            }
+        }
+
+        function loadEdit(id, name, type, lat, lng, radius) {
+            currentId = id;
+
+            // Highlight selected row
+            document.querySelectorAll('.monster-row').forEach(r => r.classList.remove('selected'));
+            document.getElementById(`row-${id}`).classList.add('selected');
+
+            // Fill form
+            document.getElementById('monster_name').value = name;
+            document.getElementById('monster_type').value = type;
+            document.getElementById('spawn_radius_meters').value = radius;
+            document.getElementById('spawn_latitude').value = lat;
+            document.getElementById('spawn_longitude').value = lng;
+            document.getElementById('coordsDisplay').innerHTML = `📍 Lat: <span>${parseFloat(lat).toFixed(6)}</span> &nbsp; Lng: <span>${parseFloat(lng).toFixed(6)}</span>`;
+
+            // Place marker on map
+            const latlng = [lat, lng];
+            if (spawnMarker) spawnMarker.setLatLng(latlng);
+            else spawnMarker = L.marker(latlng).addTo(spawnMap);
+            spawnMap.setView(latlng, 16);
+
+            // Show form
+            document.getElementById('formPlaceholder').style.display = 'none';
+            document.getElementById('editForm').style.display = 'block';
+            document.getElementById('message').className = 'message';
+            setTimeout(() => spawnMap.invalidateSize(), 50);
+        }
+
+        document.getElementById('editForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            if (!currentId) return;
+
+            const lat = document.getElementById('spawn_latitude').value;
+            const lng = document.getElementById('spawn_longitude').value;
+            const msgEl = document.getElementById('message');
+            const btn = document.getElementById('submitBtn');
+
+            btn.disabled = true;
+            btn.textContent = 'Saving...';
+            msgEl.className = 'message';
+
+            const body = {
+                monster_name: document.getElementById('monster_name').value.trim(),
+                monster_type: document.getElementById('monster_type').value.trim(),
+                spawn_latitude: lat,
+                spawn_longitude: lng,
+                spawn_radius_meters: document.getElementById('spawn_radius_meters').value
+            };
+
+            try {
+                const res = await fetch(`/api/monsters/${currentId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const result = await res.json();
+                if (res.ok) {
+                    msgEl.textContent = `✅ "${body.monster_name}" updated successfully!`;
+                    msgEl.className = 'message success';
+                    // Update the list row in place
+                    const row = document.getElementById(`row-${currentId}`);
+                    row.querySelector('.name').textContent = body.monster_name;
+                    row.querySelector('.type').textContent = body.monster_type;
+                    // Update onclick with new values
+                    row.querySelector('.edit-btn').setAttribute('onclick',
+                        `loadEdit(${currentId}, '${body.monster_name.replace(/'/g,"\\'")}', '${body.monster_type.replace(/'/g,"\\'")}', ${lat}, ${lng}, ${body.spawn_radius_meters})`
+                    );
+                } else {
+                    throw new Error(result.message || 'Failed to update monster.');
+                }
+            } catch (err) {
+                msgEl.textContent = `❌ ${err.message}`;
+                msgEl.className = 'message error';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Save Changes';
+            }
+        });
+
+        loadMonsters();
+    </script>
+</body>
+</html>
